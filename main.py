@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from scrapping.vip import iniciar_scraping_vip
+from scrapping.vip import iniciar_scraping_vip, testar_um_banco
 import uvicorn
 from datetime import datetime
 import os
@@ -19,10 +19,49 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "scraping_vip": "/scraping/vip",
+            "test_banco": "/test/{banco}",
             "status": "/status",
             "pdfs": "/pdfs"
         }
     }
+
+@app.get("/test/{banco}")
+async def testar_banco_especifico(banco: str):
+    """Testa scraping de um banco específico com debug detalhado"""
+    try:
+        bancos_validos = ["bradesco", "banco_pan", "bv"]
+        
+        if banco not in bancos_validos:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Banco '{banco}' não é válido. Use: {', '.join(bancos_validos)}"
+            )
+        
+        print(f"🧪 Testando banco {banco} via API...")
+        
+        links_encontrados = testar_um_banco(banco)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "sucesso",
+                "banco": banco,
+                "message": f"Teste do banco {banco} concluído",
+                "timestamp": datetime.now().isoformat(),
+                "total_links": len(links_encontrados),
+                "links_encontrados": links_encontrados[:10]  # Primeiros 10 links
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "erro",
+                "message": f"Erro durante o teste: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }
+        )
 
 @app.post("/scraping/vip")
 async def executar_scraping_vip():
